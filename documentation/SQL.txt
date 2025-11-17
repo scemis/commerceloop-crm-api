@@ -1,0 +1,74 @@
+CREATE DATABASE IF NOT EXISTS OST_CRM;
+USE OST_CRM;
+
+-- Create the 'roles' table
+CREATE TABLE IF NOT EXISTS roles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL UNIQUE
+);
+
+-- Insert roles into the 'roles' table
+INSERT INTO roles (role_name)
+VALUES
+    ('SuperAdmin'),
+    ('Admin'),
+    ('Worker');
+
+-- Create the 'users' table (with a role_id foreign key reference to the 'roles' table)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(50) NOT NULL,  -- Full name column for 'users'
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone VARCHAR(15) NULL,
+    last_date_connection DATE NULL,    
+    is_deleted BOOLEAN DEFAULT FALSE,  -- Indicating if the connection is approved
+    description TEXT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    role_id INT NOT NULL,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create the 'personal_details' table
+CREATE TABLE IF NOT EXISTS personal_details (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL, 
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,    
+    date_of_birth DATE NOT NULL,
+    city VARCHAR(100) NULL,
+    country VARCHAR(100) NULL,
+    phone_number VARCHAR(15) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Insert a user and assign them a role (ensure the user has valid data)
+-- Be sure that the role_id (1) corresponds to the 'SuperAdmin' role inserted above
+INSERT INTO users (full_name, email, phone, last_date_connection, description, role_id)
+VALUES
+    ('Den V', 'denisv@osaco.com', '+123456789', '2024-11-16', 'Leading tech firm', 1);
+
+-- Create the 'company' table
+CREATE TABLE IF NOT EXISTS company (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    firm_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    phone VARCHAR(15) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create the 'connect_companis' table (relationship between users and companies)
+CREATE TABLE IF NOT EXISTS connect_companis (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    worker_id INT NOT NULL,  
+    company_id INT NOT NULL,  
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    next_meeting DATETIME NULL,
+    is_approved BOOLEAN NULL,  -- Indicating if the connection is approved
+    status ENUM('pending', 'completed', 'canceled') DEFAULT 'pending',
+    description TEXT NOT NULL,  -- A description for the connection
+    last_update DATETIME NULL,  -- The last time the record was updated
+    FOREIGN KEY (worker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (company_id) REFERENCES company(id) ON DELETE CASCADE
+);
