@@ -19,9 +19,6 @@ def upgrade():
         "roles",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("role_name", sa.String(50), nullable=False, unique=True),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- users ---
@@ -31,14 +28,11 @@ def upgrade():
         sa.Column("full_name", sa.String(50), nullable=False),
         sa.Column("email", sa.String(100), nullable=False, unique=True),
         sa.Column("last_date_connection", sa.Date(), nullable=True),
-        sa.Column("is_deleted", sa.Boolean(), server_default=sa.text("0")),
+        sa.Column("is_deleted", sa.Boolean(), server_default=sa.text("false")),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("updated_at", sa.TIMESTAMP, server_default=sa.func.now(), onupdate=sa.func.now()),
         sa.Column("role_id", sa.Integer, sa.ForeignKey("roles.id", ondelete="CASCADE", onupdate="CASCADE")),
         sa.Column("hashed_pass", sa.Text, nullable=False),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- personal_details ---
@@ -53,9 +47,6 @@ def upgrade():
         sa.Column("country", sa.String(100), nullable=True),
         sa.Column("phone_number", sa.String(15), nullable=True),
         sa.Column("created_at", sa.TIMESTAMP, server_default=sa.func.now()),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- companis (именно так в моделях) ---
@@ -66,9 +57,6 @@ def upgrade():
         sa.Column("email", sa.String(100), nullable=False, unique=True),
         sa.Column("phone", sa.String(15), nullable=True),
         sa.Column("created_at", sa.TIMESTAMP, server_default=sa.func.now()),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- connect_companis (именно так в моделях) ---
@@ -83,9 +71,6 @@ def upgrade():
         sa.Column("status", status_enum, server_default="pending"),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("last_update", sa.DateTime, nullable=True),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- categories ---
@@ -93,9 +78,6 @@ def upgrade():
         "categories",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("name", sa.String(255), nullable=False),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- sub_categories ---
@@ -110,9 +92,6 @@ def upgrade():
         sa.Column("height", sa.Integer, nullable=False),
         sa.Column("price_per_piece", sa.Float, nullable=False, server_default="0"),
         sa.Column("category_id", sa.Integer, sa.ForeignKey("categories.id")),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- products ---
@@ -131,9 +110,6 @@ def upgrade():
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("category_id", sa.Integer, sa.ForeignKey("categories.id", ondelete="CASCADE")),
         sa.Column("sub_category_id", sa.Integer, sa.ForeignKey("sub_categories.id", ondelete="CASCADE")),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     # --- seed (без ORM; только SQL через bind) ---
@@ -142,7 +118,7 @@ def upgrade():
     # роли
     for role_name in ("SuperAdmin", "Admin", "Worker"):
         bind.execute(sa.text(
-            "INSERT IGNORE INTO roles (role_name) VALUES (:role_name)"
+            "INSERT INTO roles (role_name) VALUES (:role_name) ON CONFLICT DO NOTHING"
         ), {"role_name": role_name})
 
     # суперюзер (пароль-хеш поставьте свой, если нужно)
@@ -152,9 +128,8 @@ def upgrade():
         role_id = row[0]
         bind.execute(sa.text("""
             INSERT INTO users (full_name, email, description, hashed_pass, role_id)
-            SELECT :full_name, :email, :description, :hashed_pass, :role_id
-            FROM DUAL
-            WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = :email)
+            VALUES (:full_name, :email, :description, :hashed_pass, :role_id)
+            ON CONFLICT (email) DO NOTHING
         """), {
             "full_name": "Den V",
             "email": "sa@cloop.ca",
@@ -166,14 +141,13 @@ def upgrade():
         # --- personal_details для этого пользователя (если ещё нет) ---
         u = bind.execute(sa.text(
             "SELECT id FROM users WHERE email = :email"
-        ), {"email": "sa@osaco.ee"}).first()
+        ), {"email": "sa@cloop.ca"}).first()
         if u:
             uid = u[0]
             bind.execute(sa.text("""
                 INSERT INTO personal_details (user_id, first_name, last_name, date_of_birth, city, country, phone_number)
-                SELECT :uid, :first_name, :last_name, :dob, :city, :country, :phone
-                FROM DUAL
-                WHERE NOT EXISTS (SELECT 1 FROM personal_details WHERE user_id = :uid)
+                VALUES (:uid, :first_name, :last_name, :dob, :city, :country, :phone)
+                ON CONFLICT DO NOTHING
             """), {
                 "uid": uid,
                 "first_name": "Den",
@@ -187,9 +161,8 @@ def upgrade():
     # демо-данные категорий/подкатегорий/продуктов (идемпотентно)
     bind.execute(sa.text("""
         INSERT INTO categories (name)
-        SELECT :name FROM DUAL WHERE NOT EXISTS (
-            SELECT 1 FROM categories WHERE name = :name
-        )
+        VALUES (:name)
+        ON CONFLICT DO NOTHING
     """), {"name": "Electronics"})
 
     cat = bind.execute(sa.text(
@@ -199,10 +172,8 @@ def upgrade():
         cat_id = cat[0]
         bind.execute(sa.text("""
             INSERT INTO sub_categories (name, count, booked, length, width, height, price_per_piece, category_id)
-            SELECT :name, :count, 0, :length, :width, :height, :price, :cat_id
-            FROM DUAL WHERE NOT EXISTS (
-                SELECT 1 FROM sub_categories WHERE name = :name
-            )
+            VALUES (:name, :count, 0, :length, :width, :height, :price, :cat_id)
+            ON CONFLICT DO NOTHING
         """), {
             "name": "Smartphones", "count": 0,
             "length": 1, "width": 1, "height": 1, "price": 0, "cat_id": cat_id
@@ -215,10 +186,8 @@ def upgrade():
             sub_id = sub[0]
             bind.execute(sa.text("""
                 INSERT INTO products (customer_name, count, length, width, height, status, category_id, sub_category_id)
-                SELECT :customer_name, :count, :length, :width, :height, :status, :cat_id, :sub_id
-                FROM DUAL WHERE NOT EXISTS (
-                    SELECT 1 FROM products WHERE customer_name = :customer_name
-                )
+                VALUES (:customer_name, :count, :length, :width, :height, :status, :cat_id, :sub_id)
+                ON CONFLICT DO NOTHING
             """), {
                 "customer_name": "John Doe", "count": 10,
                 "length": 20, "width": 10, "height": 5,

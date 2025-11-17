@@ -26,10 +26,6 @@ entity_enum = sa.Enum(
 )
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    activity_enum.create(bind, checkfirst=True)
-    entity_enum.create(bind, checkfirst=True)
-
     op.create_table(
         "activity_logs",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
@@ -39,9 +35,6 @@ def upgrade() -> None:
         sa.Column("emploee_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
-        mysql_engine="InnoDB",
-        mysql_charset="utf8mb4",
-        mysql_collate="utf8mb4_unicode_ci",
     )
 
     op.create_index("ix_activity_logs_created_at", "activity_logs", ["created_at"], unique=False)
@@ -58,7 +51,3 @@ def downgrade() -> None:
     op.drop_index("ix_activity_logs_created_at", table_name="activity_logs")
 
     op.drop_table("activity_logs")
-
-    bind = op.get_bind()
-    entity_enum.drop(bind, checkfirst=True)
-    activity_enum.drop(bind, checkfirst=True)

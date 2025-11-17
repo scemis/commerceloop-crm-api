@@ -1,2 +1,0 @@
-2025-11-17 12:30:13.471 | INFO     | api.auth.routes:login:113 - [2025-11-17T17:30:12] Successful login | user_id=1 email=sa@cloop.ca | ip=127.0.0.1
-2025-11-17 12:30:25.953 | INFO     | api.users.routes:list_employees:46 - [USER][LIST] actor_id=1 skip=0 limit=5 count=0 ip=127.0.0.1

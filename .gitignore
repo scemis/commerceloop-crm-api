@@ -10,5 +10,11 @@ __pycache__/
 .python_packages
 .venv-3-11
 
+# logs
+logs/*
+
 # ssl
 localhost-cert*
+
+#copilot
+.copilot
